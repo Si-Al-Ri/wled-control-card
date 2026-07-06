@@ -5,7 +5,24 @@ zur Steuerung eines WLED-Geräts. Optisch an den nativen HA-Licht-Dialog angeleh
 aber flexibler: Helligkeit, Favoriten-Farben, RGB-/Weiß-Farbwähler, Presets,
 Farbpaletten, Effekte, Geschwindigkeit/Intensität und frei wählbare Zusatz-Schalter/Buttons.
 
-![Platzhalter für Screenshot](docs/screenshot.png)
+![WLED Control Card](docs/Card.png)
+
+## Screenshots
+
+Grafischer Editor – vollständig ohne YAML konfigurierbar:
+
+![Grafischer Editor](docs/Config.png)
+
+Native Dropdowns (Voreinstellung · Farbpalette · Effekt):
+
+![Native Dropdowns](docs/Dropdown.png)
+
+<table>
+  <tr>
+    <td align="center"><b>RGB-Farbwähler</b><br/><img src="docs/ColorPicker.png" width="340" /></td>
+    <td align="center"><b>Weiß / Farbtemperatur</b><br/><img src="docs/WhiteBalance.png" width="340" /></td>
+  </tr>
+</table>
 
 ---
 
