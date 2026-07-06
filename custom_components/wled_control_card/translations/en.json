@@ -1,0 +1,14 @@
+{
+  "title": "WLED Control Card",
+  "config": {
+    "step": {
+      "user": {
+        "title": "WLED Control Card",
+        "description": "This integration provides the WLED Control Card as a dashboard card and registers it automatically as a resource. Click \"Submit\" to activate it."
+      }
+    },
+    "abort": {
+      "already_configured": "The WLED Control Card is already configured."
+    }
+  }
+}

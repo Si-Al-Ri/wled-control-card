@@ -1,0 +1,16 @@
+# Lokaler WLED-Core-Override (nicht Teil dieses Repos)
+custom_components/wled/
+
+# Interne Design-Spezifikation
+wled-control-card-spec.md
+
+# OS / Editor / Temp
+.DS_Store
+Thumbs.db
+*.code-workspace
+.vscode/
+__pycache__/
+*.py[cod]
+
+# Lokale Tool-/Session-Daten
+.claude/
