@@ -5,24 +5,25 @@ zur Steuerung eines WLED-Geräts. Optisch an den nativen HA-Licht-Dialog angeleh
 aber flexibler: Helligkeit, Favoriten-Farben, RGB-/Weiß-Farbwähler, Presets,
 Farbpaletten, Effekte, Geschwindigkeit/Intensität und frei wählbare Zusatz-Schalter/Buttons.
 
-<img src="docs/Card.png" width="420" alt="WLED Control Card" />
+![WLED Control Card](https://raw.githubusercontent.com/Si-Al-Ri/wled-control-card/main/docs/Card.png)
 
 ## Screenshots
 
-Grafischer Editor – vollständig ohne YAML konfigurierbar:
+Grafischer Editor, vollständig ohne YAML konfigurierbar:
 
-<img src="docs/Config.png" width="520" alt="Grafischer Editor" />
+![Grafischer Editor](https://raw.githubusercontent.com/Si-Al-Ri/wled-control-card/main/docs/Config.png)
 
-Native Dropdowns (Voreinstellung · Farbpalette · Effekt):
+Native Dropdowns (Voreinstellung, Farbpalette, Effekt):
 
-<img src="docs/Dropdown.png" width="360" alt="Native Dropdowns" />
+![Native Dropdowns](https://raw.githubusercontent.com/Si-Al-Ri/wled-control-card/main/docs/Dropdown.png)
 
-<table>
-  <tr>
-    <td align="center"><b>RGB-Farbwähler</b><br/><img src="docs/ColorPicker.png" width="340" /></td>
-    <td align="center"><b>Weiß / Farbtemperatur</b><br/><img src="docs/WhiteBalance.png" width="340" /></td>
-  </tr>
-</table>
+RGB-Farbwähler mit Farbrad, Farbhelligkeit und Weiß-Helligkeit:
+
+![RGB-Farbwähler](https://raw.githubusercontent.com/Si-Al-Ri/wled-control-card/main/docs/ColorPicker.png)
+
+Weiß / Farbtemperatur:
+
+![Farbtemperatur](https://raw.githubusercontent.com/Si-Al-Ri/wled-control-card/main/docs/WhiteBalance.png)
 
 ---
 
