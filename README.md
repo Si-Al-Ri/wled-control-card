@@ -211,6 +211,14 @@ weiterhin auf diese eine Entität.
 
 ---
 
+## Sprache
+
+Die Karte übernimmt die in Home Assistant eingestellte Sprache. Enthalten sind
+**Deutsch** und **Englisch**; bei allen anderen Sprachen wird Englisch verwendet.
+Das gilt für die Karte selbst und für den grafischen Editor.
+
+---
+
 ## Robustheit
 
 - **Mehrere Light-Entitäten** (Segmente/Master): Hauptlicht per `light_entity` wählbar,

@@ -8,7 +8,7 @@
  * Lizenz: MIT
  */
 
-const CARD_VERSION = "1.3.1";
+const CARD_VERSION = "1.4.0";
 
 // Pseudo-Index der "Alle"-Auswahl (Master-Light) in der Segment-Leiste.
 const MASTER_SEGMENT = -1;
@@ -24,6 +24,139 @@ const DEFAULT_FAVORITES = [
   [240, 138, 208],
   [226, 105, 74],
 ];
+
+/* -------------------------------- Sprachen -------------------------------- */
+
+const TRANSLATIONS = {
+  en: {
+    on: "On",
+    off: "Off",
+    unavailable: "Unavailable",
+    all: "All",
+    segment: "Segment",
+    rgb: "RGB",
+    white: "White",
+    preset: "Preset",
+    palette: "Color palette",
+    effect: "Effect",
+    playlist: "Playlist",
+    speed: "Speed",
+    intensity: "Intensity",
+    effectSettings: "Effect settings",
+    color: "Color",
+    colorTemperature: "Color temperature",
+    warm: "Warm",
+    cold: "Cold",
+    close: "Close",
+    colorBrightness: "Color brightness",
+    whiteBrightness: "White brightness",
+    coldWhite: "Cold white",
+    warmWhite: "Warm white",
+    hintSelectDevice: "Please select a WLED device in the editor.",
+    hintNoLight: "No light entity found for this device.",
+    favTitle: "Favorite colors",
+    favHint: "Leave empty to use the default colors.",
+    addColor: "+ Color",
+    removeColor: "Remove",
+    cardDescription:
+      "Compact control card for WLED devices (brightness, colors, presets, palettes, effects, segments).",
+    cfg_device: "WLED device",
+    cfg_name: "Display name (optional)",
+    cfg_show_segments: "Segment selection (2 segments or more)",
+    cfg_show_master_segment: 'Segment selection: show "All"',
+    cfg_show_brightness: "Brightness",
+    cfg_show_favorites: "Favorite colors",
+    cfg_show_favorite_presets: "Favorite presets",
+    cfg_show_color_pickers: "Color pickers (RGB/White)",
+    cfg_show_presets: "Presets",
+    cfg_show_palettes: "Color palettes",
+    cfg_show_playlist: "Playlist",
+    cfg_show_effects: "Effects",
+    cfg_show_speed: "Speed",
+    cfg_show_intensity: "Intensity",
+    cfg_collapsible_dropdowns: "Effect settings collapsible",
+    cfg_dynamic_brightness_color: "Brightness slider in light color",
+    cfg_extra_controls: "Additional switches/buttons",
+    cfg_favorite_presets: "Favorite presets",
+    cfg_light_entity: "Override: light",
+    cfg_preset_entity: "Override: preset",
+    cfg_palette_entity: "Override: color palette",
+    cfg_playlist_entity: "Override: playlist",
+    cfg_speed_entity: "Override: speed",
+    cfg_intensity_entity: "Override: intensity",
+  },
+  de: {
+    on: "Ein",
+    off: "Aus",
+    unavailable: "Nicht verfügbar",
+    all: "Alle",
+    segment: "Segment",
+    rgb: "RGB",
+    white: "Weiß",
+    preset: "Voreinstellung",
+    palette: "Farbpalette",
+    effect: "Effekt",
+    playlist: "Wiedergabeliste",
+    speed: "Geschwindigkeit",
+    intensity: "Intensität",
+    effectSettings: "Effekteinstellungen",
+    color: "Farbe",
+    colorTemperature: "Farbtemperatur",
+    warm: "Warm",
+    cold: "Kalt",
+    close: "Schließen",
+    colorBrightness: "Farbhelligkeit",
+    whiteBrightness: "Weiß-Helligkeit",
+    coldWhite: "Kaltweiß",
+    warmWhite: "Warmweiß",
+    hintSelectDevice: "Bitte WLED-Gerät im Editor wählen.",
+    hintNoLight: "Keine Light-Entität für dieses Gerät gefunden.",
+    favTitle: "Favoriten-Farben",
+    favHint: "Leer lassen für die Standardfarben.",
+    addColor: "+ Farbe",
+    removeColor: "Entfernen",
+    cardDescription:
+      "Kompakte Steuerkarte für WLED-Geräte (Helligkeit, Farben, Voreinstellungen, Paletten, Effekte, Segmente).",
+    cfg_device: "WLED-Gerät",
+    cfg_name: "Anzeigename (optional)",
+    cfg_show_segments: "Segment-Auswahl (ab 2 Segmenten)",
+    cfg_show_master_segment: 'Segment-Auswahl: "Alle" anzeigen',
+    cfg_show_brightness: "Helligkeit",
+    cfg_show_favorites: "Favoriten-Farben",
+    cfg_show_favorite_presets: "Favoriten-Voreinstellungen",
+    cfg_show_color_pickers: "Farbwähler (RGB/Weiß)",
+    cfg_show_presets: "Voreinstellungen",
+    cfg_show_palettes: "Farbpaletten",
+    cfg_show_playlist: "Wiedergabeliste",
+    cfg_show_effects: "Effekte",
+    cfg_show_speed: "Geschwindigkeit",
+    cfg_show_intensity: "Intensität",
+    cfg_collapsible_dropdowns: "Effekteinstellungen einklappbar",
+    cfg_dynamic_brightness_color: "Helligkeitsregler in Lichtfarbe",
+    cfg_extra_controls: "Zusätzliche Schalter/Buttons",
+    cfg_favorite_presets: "Favoriten-Voreinstellungen",
+    cfg_light_entity: "Override: Licht",
+    cfg_preset_entity: "Override: Voreinstellung",
+    cfg_palette_entity: "Override: Farbpalette",
+    cfg_playlist_entity: "Override: Wiedergabeliste",
+    cfg_speed_entity: "Override: Geschwindigkeit",
+    cfg_intensity_entity: "Override: Intensität",
+  },
+};
+
+// Sprache aus HA (faellt auf die Browsersprache und dann Englisch zurueck).
+function languageOf(hass) {
+  const lang =
+    (hass && ((hass.locale && hass.locale.language) || hass.language)) ||
+    (typeof navigator !== "undefined" && navigator.language) ||
+    "en";
+  return String(lang).slice(0, 2).toLowerCase();
+}
+
+function translate(hass, key) {
+  const dict = TRANSLATIONS[languageOf(hass)] || TRANSLATIONS.en;
+  return dict[key] != null ? dict[key] : TRANSLATIONS.en[key] || key;
+}
 
 /* ------------------------------ Hilfsfunktionen --------------------------- */
 
@@ -436,10 +569,14 @@ class WledControlCard extends HTMLElement {
     loadHaComponents();
   }
 
+  _t(key) {
+    return translate(this._hass, key);
+  }
+
   /* --------------------------- Lebenszyklus ------------------------------ */
 
   setConfig(config) {
-    if (!config) throw new Error("Ungueltige Konfiguration.");
+    if (!config) throw new Error("Invalid configuration.");
     this._config = {
       type: config.type,
       device: config.device || "",
@@ -646,11 +783,11 @@ class WledControlCard extends HTMLElement {
     /* --- Farbwaehler-Buttons (Reihe 2) --- */
     const rgbBtn = h("button", { class: "picker-btn", "@click": () => this._openColorPicker("rgb") }, [
       h("ha-icon", { icon: "mdi:palette" }),
-      h("span", { text: "RGB" }),
+      h("span", { text: this._t("rgb") }),
     ]);
     const cctBtn = h("button", { class: "picker-btn", "@click": () => this._openColorPicker("cct") }, [
       h("ha-icon", { icon: "mdi:thermometer" }),
-      h("span", { text: "Weiss" }),
+      h("span", { text: this._t("white") }),
     ]);
     Object.assign(this._el, { rgbBtn, cctBtn });
     this._el.pickers = h("div", { class: "section pickers" }, [rgbBtn, cctBtn]);
@@ -666,7 +803,7 @@ class WledControlCard extends HTMLElement {
       { class: "effect-toggle hidden", "@click": () => this._toggleDropdowns() },
       [
         h("ha-icon", { icon: "mdi:chevron-down" }),
-        h("span", { class: "effect-toggle-label", text: "Effekteinstellungen" }),
+        h("span", { class: "effect-toggle-label", text: this._t("effectSettings") }),
       ]
     );
     content.appendChild(this._el.effectToggle);
@@ -680,10 +817,10 @@ class WledControlCard extends HTMLElement {
       ]);
       return { field, select };
     };
-    const preset = mkSelect("preset", "Voreinstellung");
-    const palette = mkSelect("palette", "Farbpalette");
-    const effect = mkSelect("effect", "Effekt");
-    const playlist = mkSelect("playlist", "Wiedergabeliste");
+    const preset = mkSelect("preset", this._t("preset"));
+    const palette = mkSelect("palette", this._t("palette"));
+    const effect = mkSelect("effect", this._t("effect"));
+    const playlist = mkSelect("playlist", this._t("playlist"));
     Object.assign(this._el, {
       presetField: preset.field,
       presetSelect: preset.select,
@@ -718,8 +855,8 @@ class WledControlCard extends HTMLElement {
       ]);
       return { row, slider, value };
     };
-    const speed = mkRow("speed", "mdi:speedometer", "Geschwindigkeit");
-    const intensity = mkRow("intensity", "mdi:contrast-circle", "Intensitaet");
+    const speed = mkRow("speed", "mdi:speedometer", this._t("speed"));
+    const intensity = mkRow("intensity", "mdi:contrast-circle", this._t("intensity"));
     Object.assign(this._el, {
       speedSlider: speed.slider,
       speedValue: speed.value,
@@ -750,9 +887,9 @@ class WledControlCard extends HTMLElement {
     const cfg = this._config;
     if (!hass || !cfg) return;
 
-    if (!cfg.device) return this._showHint("Bitte WLED-Geraet im Editor waehlen.");
+    if (!cfg.device) return this._showHint(this._t("hintSelectDevice"));
     const light = this._lightState;
-    if (!light) return this._showHint("Keine Light-Entitaet fuer dieses Geraet gefunden.");
+    if (!light) return this._showHint(this._t("hintNoLight"));
     this._showHint(null);
 
     const attrs = light.attributes || {};
@@ -885,14 +1022,14 @@ class WledControlCard extends HTMLElement {
     const area = this._areaName();
     if (area) parts.push(area);
     if (this._roles.segmentMode) {
-      if (this._segmentIndex === MASTER_SEGMENT) parts.push("Alle");
+      if (this._segmentIndex === MASTER_SEGMENT) parts.push(this._t("all"));
       else {
         const seg = this._roles.availableSegments.find((s) => s.index === this._segmentIndex);
         if (seg) parts.push(this._segmentLabel(seg));
       }
     }
-    if (light.state === "unavailable") parts.push("Nicht verfuegbar");
-    else parts.push(isOn ? "Ein" : "Aus");
+    if (light.state === "unavailable") parts.push(this._t("unavailable"));
+    else parts.push(this._t(isOn ? "on" : "off"));
     if (isOn && attrs.brightness != null) parts.push(Math.round((attrs.brightness / 255) * 100) + " %");
     return parts.join(" · ");
   }
@@ -936,7 +1073,7 @@ class WledControlCard extends HTMLElement {
     let name = (st && st.attributes.friendly_name) || "";
     const dev = this._deviceName();
     if (dev && name.startsWith(dev)) name = name.slice(dev.length).replace(/^[\s\-–—·:]+/, "");
-    return name || `Segment ${seg.index}`;
+    return name || `${this._t("segment")} ${seg.index}`;
   }
 
   _renderSegments() {
@@ -946,7 +1083,7 @@ class WledControlCard extends HTMLElement {
     if (!roles.segmentMode) return;
 
     const items = [];
-    if (roles.showMaster) items.push({ index: MASTER_SEGMENT, entity: roles.mainLight, label: "Alle" });
+    if (roles.showMaster) items.push({ index: MASTER_SEGMENT, entity: roles.mainLight, label: this._t("all") });
     roles.availableSegments.forEach((s) =>
       items.push({ index: s.index, entity: s.light, label: this._segmentLabel(s) })
     );
@@ -1232,7 +1369,7 @@ class WledControlCard extends HTMLElement {
       if (e.target === overlay) this._closePicker();
     });
     const panel = h("div", { class: "wled-picker-panel" });
-    panel.appendChild(h("div", { class: "wled-picker-title", text: mode === "rgb" ? "Farbe" : "Farbtemperatur" }));
+    panel.appendChild(h("div", { class: "wled-picker-title", text: this._t(mode === "rgb" ? "color" : "colorTemperature") }));
 
     if (mode === "rgb") {
       this._buildRgbPicker(panel, attrs);
@@ -1265,12 +1402,12 @@ class WledControlCard extends HTMLElement {
       panel.appendChild(
         h("div", { class: "wled-cct-wrap" }, [
           slider,
-          h("div", { class: "wled-cct-scale" }, [h("span", { text: "Warm" }), h("span", { text: "Kalt" })]),
+          h("div", { class: "wled-cct-scale" }, [h("span", { text: this._t("warm") }), h("span", { text: this._t("cold") })]),
         ])
       );
     }
 
-    panel.appendChild(h("button", { class: "wled-picker-close", text: "Schliessen", "@click": () => this._closePicker() }));
+    panel.appendChild(h("button", { class: "wled-picker-close", text: this._t("close"), "@click": () => this._closePicker() }));
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
     this._pickerOverlay = overlay;
@@ -1382,7 +1519,7 @@ class WledControlCard extends HTMLElement {
 
     if (withColorBrightness) {
       panel.appendChild(
-        this._buildPickerSlider("mdi:brightness-7", "Farbhelligkeit", p.cbPct, (val, final) => {
+        this._buildPickerSlider("mdi:brightness-7", this._t("colorBrightness"), p.cbPct, (val, final) => {
           p.cbPct = val;
           updateVisual();
           if (final) flush();
@@ -1392,7 +1529,7 @@ class WledControlCard extends HTMLElement {
     }
     if (mode === "rgbw") {
       panel.appendChild(
-        this._buildPickerSlider("mdi:alpha-w-box", "Weiss-Helligkeit", p.wPct, (val, final) => {
+        this._buildPickerSlider("mdi:alpha-w-box", this._t("whiteBrightness"), p.wPct, (val, final) => {
           p.wPct = val;
           if (final) flush();
           else send();
@@ -1400,14 +1537,14 @@ class WledControlCard extends HTMLElement {
       );
     } else if (mode === "rgbww") {
       panel.appendChild(
-        this._buildPickerSlider("mdi:snowflake", "Kaltweiss", p.cwPct, (val, final) => {
+        this._buildPickerSlider("mdi:snowflake", this._t("coldWhite"), p.cwPct, (val, final) => {
           p.cwPct = val;
           if (final) flush();
           else send();
         })
       );
       panel.appendChild(
-        this._buildPickerSlider("mdi:fire", "Warmweiss", p.wwPct, (val, final) => {
+        this._buildPickerSlider("mdi:fire", this._t("warmWhite"), p.wwPct, (val, final) => {
           p.wwPct = val;
           if (final) flush();
           else send();
@@ -1465,34 +1602,6 @@ class WledControlCard extends HTMLElement {
 
 /* ============================== Der Editor =============================== */
 
-const LABELS = {
-  device: "WLED-Geraet",
-  name: "Anzeigename (optional)",
-  show_segments: "Segment-Auswahl (ab 2 Segmenten)",
-  show_master_segment: "Segment-Auswahl: \"Alle\" anzeigen",
-  show_brightness: "Helligkeit",
-  show_favorites: "Favoriten-Farben",
-  show_favorite_presets: "Favoriten-Voreinstellungen",
-  show_color_pickers: "Farbwaehler (RGB/Weiss)",
-  show_presets: "Voreinstellungen",
-  show_palettes: "Farbpaletten",
-  show_playlist: "Wiedergabeliste",
-  show_effects: "Effekte",
-  show_speed: "Geschwindigkeit",
-  show_intensity: "Intensitaet",
-  collapsible_dropdowns: "Effekteinstellungen einklappbar",
-  effect_header: "Effekteinstellungen (aufklappbarer Bereich)",
-  dynamic_brightness_color: "Helligkeitsregler in Lichtfarbe",
-  extra_controls: "Zusaetzliche Schalter/Buttons",
-  favorite_presets: "Favoriten-Voreinstellungen",
-  light_entity: "Override: Licht",
-  preset_entity: "Override: Voreinstellung",
-  palette_entity: "Override: Farbpalette",
-  playlist_entity: "Override: Wiedergabeliste",
-  speed_entity: "Override: Geschwindigkeit",
-  intensity_entity: "Override: Intensitaet",
-};
-
 const EDITOR_STYLES = `
   :host{ display:block; }
   ha-form{ display:block; }
@@ -1521,6 +1630,10 @@ class WledControlCardEditor extends HTMLElement {
     loadHaComponents();
   }
 
+  _t(key) {
+    return translate(this._hass, key);
+  }
+
   setConfig(config) {
     this._config = { ...config };
     this._render();
@@ -1540,7 +1653,7 @@ class WledControlCardEditor extends HTMLElement {
       this._build();
       this._built = true;
     }
-    const computeLabel = (s) => LABELS[s.name] || "";
+    const computeLabel = (s) => this._t("cfg_" + s.name);
     this._el.form.hass = this._hass;
     this._el.form.data = this._config;
     this._el.form.schema = this._schemaTop();
@@ -1564,7 +1677,7 @@ class WledControlCardEditor extends HTMLElement {
     // Echte Trennlinie mit Beschriftung zwischen den beiden ha-form-Bloecken.
     this.shadowRoot.appendChild(
       h("div", { class: "editor-divider" }, [
-        h("span", { class: "editor-divider-label", text: "Effekteinstellungen" }),
+        h("span", { class: "editor-divider-label", text: this._t("effectSettings") }),
       ])
     );
 
@@ -1574,9 +1687,9 @@ class WledControlCardEditor extends HTMLElement {
     this._el.form2 = form2;
     this.shadowRoot.appendChild(form2);
 
-    this.shadowRoot.appendChild(h("div", { class: "fav-title", text: "Favoriten-Farben" }));
+    this.shadowRoot.appendChild(h("div", { class: "fav-title", text: this._t("favTitle") }));
     this.shadowRoot.appendChild(
-      h("div", { class: "fav-hint", text: "Leer lassen fuer sinnvolle Standardfarben." })
+      h("div", { class: "fav-hint", text: this._t("favHint") })
     );
     this._el.favWrap = h("div", { class: "fav-editor" });
     this.shadowRoot.appendChild(this._el.favWrap);
@@ -1682,7 +1795,7 @@ class WledControlCardEditor extends HTMLElement {
       });
       const remove = h("button", {
         class: "fav-remove",
-        title: "Entfernen",
+        title: this._t("removeColor"),
         text: "×",
         "@click": () => {
           const l = this._currentFavorites();
@@ -1695,7 +1808,7 @@ class WledControlCardEditor extends HTMLElement {
     wrap.appendChild(
       h("button", {
         class: "fav-add",
-        text: "+ Farbe",
+        text: this._t("addColor"),
         "@click": () => {
           const l = this._currentFavorites();
           l.push([255, 255, 255]);
@@ -1720,7 +1833,7 @@ if (!window.customCards.some((c) => c.type === "wled-control-card")) {
   window.customCards.push({
     type: "wled-control-card",
     name: "WLED Control Card",
-    description: "Kompakte Steuerkarte fuer WLED-Geraete (Helligkeit, Farben, Presets, Paletten, Effekte, Zusatz-Schalter).",
+    description: translate(null, "cardDescription"),
     preview: true,
     documentationURL: "https://github.com/Si-Al-Ri/wled-control-card",
   });
