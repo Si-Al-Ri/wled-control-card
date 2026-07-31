@@ -8,7 +8,7 @@
  * Lizenz: MIT
  */
 
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.3.1";
 
 // Pseudo-Index der "Alle"-Auswahl (Master-Light) in der Segment-Leiste.
 const MASTER_SEGMENT = -1;
@@ -193,11 +193,14 @@ function pickByName(list, hass, needles) {
   });
 }
 
-const SEGMENT_RE = /segment\s*(\d+)/i;
-
-// Segment-Index aus dem Anzeigenamen ("... Segment 2 ..."); ohne Treffer = Segment 0.
-function segmentIndexOf(hass, entry) {
-  const m = entityName(hass, entry).match(SEGMENT_RE);
+// Segment-Index sprachunabhaengig bestimmen: HA benennt Segment 0 exakt wie das
+// Geraet, ab Segment 1 folgt der uebersetzte Segment-Name mit Nummer
+// ("Segment 1", "Segmento 1", "Сегмент 1", "セグメント1" ...). Deshalb wird der
+// Geraetename abgeschnitten und im Rest die erste Zahl gesucht.
+function segmentIndexFromName(name, deviceName) {
+  let rest = String(name || "");
+  if (deviceName && rest.startsWith(deviceName)) rest = rest.slice(deviceName.length);
+  const m = rest.match(/(\d+)/);
   return m ? Number(m[1]) : 0;
 }
 
@@ -209,7 +212,7 @@ function isMainLightEntry(hass, entry) {
 // Sammelt die Segmente des Geraets: je Segment das Light und die zugehoerigen
 // Palette-/Speed-/Intensity-Entitaeten. Segment 0 nutzt die schlichten
 // translation_keys, ab Segment 1 die "segment_*"-Varianten.
-function collectSegments(hass, deviceEntities) {
+function collectSegments(hass, deviceEntities, deviceName) {
   const map = new Map();
   const seg = (i) => {
     if (!map.has(i)) {
@@ -218,19 +221,23 @@ function collectSegments(hass, deviceEntities) {
     return map.get(i);
   };
   let mainLight = null;
+  const idx = (e) => segmentIndexFromName(entityName(hass, e), deviceName);
 
   deviceEntities.forEach((e) => {
     const domain = e.entity_id.split(".")[0];
     const tk = e.translation_key || "";
     if (domain === "light") {
       if (isMainLightEntry(hass, e)) mainLight = e.entity_id;
-      else seg(segmentIndexOf(hass, e)).light = e.entity_id;
-    } else if (domain === "select" && (tk === "color_palette" || tk === "segment_color_palette")) {
-      seg(segmentIndexOf(hass, e)).palette = e.entity_id;
-    } else if (domain === "number" && (tk === "speed" || tk === "segment_speed")) {
-      seg(segmentIndexOf(hass, e)).speed = e.entity_id;
-    } else if (domain === "number" && (tk === "intensity" || tk === "segment_intensity")) {
-      seg(segmentIndexOf(hass, e)).intensity = e.entity_id;
+      else seg(idx(e)).light = e.entity_id;
+    } else if (domain === "select") {
+      // Ohne "segment_"-Praefix gehoert die Entitaet immer zu Segment 0.
+      if (tk === "color_palette") seg(0).palette = e.entity_id;
+      else if (tk === "segment_color_palette") seg(idx(e)).palette = e.entity_id;
+    } else if (domain === "number") {
+      if (tk === "speed") seg(0).speed = e.entity_id;
+      else if (tk === "segment_speed") seg(idx(e)).speed = e.entity_id;
+      else if (tk === "intensity") seg(0).intensity = e.entity_id;
+      else if (tk === "segment_intensity") seg(idx(e)).intensity = e.entity_id;
     }
   });
 
@@ -269,7 +276,9 @@ function discoverEntities(hass, config) {
   const selects = inDomain("select");
   const numbers = inDomain("number");
 
-  const { segments, mainLight } = collectSegments(hass, deviceEntities);
+  const device = hass.devices && hass.devices[config.device];
+  const deviceName = device ? device.name_by_user || device.name : null;
+  const { segments, mainLight } = collectSegments(hass, deviceEntities, deviceName);
   roles.segments = segments;
   roles.mainLight = mainLight;
 
