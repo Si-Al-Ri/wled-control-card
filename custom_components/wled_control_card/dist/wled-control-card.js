@@ -8,7 +8,7 @@
  * Lizenz: MIT
  */
 
-const CARD_VERSION = "1.4.1";
+const CARD_VERSION = "1.4.2";
 
 // Pseudo-Index der "Alle"-Auswahl (Master-Light) in der Segment-Leiste.
 const MASTER_SEGMENT = -1;
@@ -1389,9 +1389,17 @@ class WledControlCard extends HTMLElement {
     if (!st) return;
     const attrs = st.attributes;
 
+    // Schliessen nur, wenn die Geste auch auf dem Hintergrund BEGONNEN hat. Sonst
+    // wuerde ein Zug am Farbrad oder Regler, der ausserhalb des Fensters endet,
+    // die Auswahl abbrechen (das click-Event feuert dann auf dem Hintergrund).
     const overlay = h("div", { class: "wled-picker-overlay" });
+    let downOnOverlay = false;
+    overlay.addEventListener("pointerdown", (e) => {
+      downOnOverlay = e.target === overlay;
+    });
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) this._closePicker();
+      if (e.target === overlay && downOnOverlay) this._closePicker();
+      downOnOverlay = false;
     });
     const panel = h("div", { class: "wled-picker-panel" });
     panel.appendChild(h("div", { class: "wled-picker-title", text: this._t(mode === "rgb" ? "color" : "colorTemperature") }));
@@ -1540,6 +1548,8 @@ class WledControlCard extends HTMLElement {
     };
     wrap.addEventListener("pointerup", end);
     wrap.addEventListener("pointercancel", end);
+    // Greift auch, wenn der Zeiger das Fenster verlaesst und die Erfassung endet.
+    wrap.addEventListener("lostpointercapture", end);
     panel.appendChild(wrap);
 
     if (withColorBrightness) {
