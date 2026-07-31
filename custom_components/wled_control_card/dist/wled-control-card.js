@@ -8,7 +8,7 @@
  * Lizenz: MIT
  */
 
-const CARD_VERSION = "1.4.0";
+const CARD_VERSION = "1.4.1";
 
 // Pseudo-Index der "Alle"-Auswahl (Master-Light) in der Segment-Leiste.
 const MASTER_SEGMENT = -1;
@@ -313,6 +313,32 @@ function entityName(hass, entry) {
     entry.original_name ||
     entry.entity_id
   ).toString();
+}
+
+// Anzeigename einer Entitaet in der Sprache des angemeldeten Nutzers. HA loest
+// Namen aus dem translation_key serverseitig auf (Sprache der Instanz), im Profil
+// kann aber eine andere Sprache eingestellt sein. Deshalb zuerst die im Frontend
+// vorhandene Uebersetzung versuchen und sonst auf friendly_name zurueckfallen.
+function localizedEntityName(hass, entityId, deviceName) {
+  const st = hass.states[entityId];
+  let fallback = (st && st.attributes && st.attributes.friendly_name) || entityId;
+  const entry = hass.entities && hass.entities[entityId];
+  // Eigener Name des Nutzers hat Vorrang vor jeder Uebersetzung.
+  if (!entry || entry.name || !entry.translation_key || !entry.platform || !hass.localize) {
+    return fallback;
+  }
+  const domain = entityId.split(".")[0];
+  const name = hass.localize(
+    `component.${entry.platform}.entity.${domain}.${entry.translation_key}.name`
+  );
+  if (!name) return fallback;
+  if (name.indexOf("{") === -1) return name;
+
+  // Platzhalter wie {segment} aus dem serverseitigen Namen uebernehmen.
+  let rest = fallback;
+  if (deviceName && rest.startsWith(deviceName)) rest = rest.slice(deviceName.length);
+  const num = (rest.match(/(\d+)/) || [])[1];
+  return num ? name.replace(/\{[^}]+\}/g, num) : fallback;
 }
 
 function pickByTranslationKey(list, keys) {
@@ -1069,9 +1095,8 @@ class WledControlCard extends HTMLElement {
   }
 
   _segmentLabel(seg) {
-    const st = this._hass.states[seg.light];
-    let name = (st && st.attributes.friendly_name) || "";
     const dev = this._deviceName();
+    let name = localizedEntityName(this._hass, seg.light, dev) || "";
     if (dev && name.startsWith(dev)) name = name.slice(dev.length).replace(/^[\s\-–—·:]+/, "");
     return name || `${this._t("segment")} ${seg.index}`;
   }
@@ -1240,8 +1265,8 @@ class WledControlCard extends HTMLElement {
   }
 
   _shortName(st, id) {
-    let name = (st && st.attributes.friendly_name) || id;
     const dev = this._deviceName();
+    let name = localizedEntityName(this._hass, id, dev) || id;
     if (dev && name.startsWith(dev)) name = name.slice(dev.length).replace(/^[\s\-–—·:]+/, "") || name;
     return name;
   }
