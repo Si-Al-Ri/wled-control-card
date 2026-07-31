@@ -8,7 +8,10 @@
  * Lizenz: MIT
  */
 
-const CARD_VERSION = "1.2.6";
+const CARD_VERSION = "1.3.0";
+
+// Pseudo-Index der "Alle"-Auswahl (Master-Light) in der Segment-Leiste.
+const MASTER_SEGMENT = -1;
 
 // Default-Favoritenfarben (RGB).
 const DEFAULT_FAVORITES = [
@@ -190,6 +193,53 @@ function pickByName(list, hass, needles) {
   });
 }
 
+const SEGMENT_RE = /segment\s*(\d+)/i;
+
+// Segment-Index aus dem Anzeigenamen ("... Segment 2 ..."); ohne Treffer = Segment 0.
+function segmentIndexOf(hass, entry) {
+  const m = entityName(hass, entry).match(SEGMENT_RE);
+  return m ? Number(m[1]) : 0;
+}
+
+function isMainLightEntry(hass, entry) {
+  if (entry.translation_key) return entry.translation_key === "main";
+  return /\b(haupt|main|master)\b/i.test(entityName(hass, entry));
+}
+
+// Sammelt die Segmente des Geraets: je Segment das Light und die zugehoerigen
+// Palette-/Speed-/Intensity-Entitaeten. Segment 0 nutzt die schlichten
+// translation_keys, ab Segment 1 die "segment_*"-Varianten.
+function collectSegments(hass, deviceEntities) {
+  const map = new Map();
+  const seg = (i) => {
+    if (!map.has(i)) {
+      map.set(i, { index: i, light: null, palette: null, speed: null, intensity: null });
+    }
+    return map.get(i);
+  };
+  let mainLight = null;
+
+  deviceEntities.forEach((e) => {
+    const domain = e.entity_id.split(".")[0];
+    const tk = e.translation_key || "";
+    if (domain === "light") {
+      if (isMainLightEntry(hass, e)) mainLight = e.entity_id;
+      else seg(segmentIndexOf(hass, e)).light = e.entity_id;
+    } else if (domain === "select" && (tk === "color_palette" || tk === "segment_color_palette")) {
+      seg(segmentIndexOf(hass, e)).palette = e.entity_id;
+    } else if (domain === "number" && (tk === "speed" || tk === "segment_speed")) {
+      seg(segmentIndexOf(hass, e)).speed = e.entity_id;
+    } else if (domain === "number" && (tk === "intensity" || tk === "segment_intensity")) {
+      seg(segmentIndexOf(hass, e)).intensity = e.entity_id;
+    }
+  });
+
+  const segments = Array.from(map.values())
+    .filter((s) => s.light)
+    .sort((a, b) => a.index - b.index);
+  return { segments, mainLight };
+}
+
 // Leitet aus dem gewaehlten Geraet alle Rollen ab. Prioritaet:
 // manuelles Override -> translation_key -> Namensheuristik.
 function discoverEntities(hass, config) {
@@ -201,6 +251,10 @@ function discoverEntities(hass, config) {
     speed: null,
     intensity: null,
     extras: [],
+    segments: [],
+    availableSegments: [],
+    mainLight: null,
+    segmentMode: false,
   };
   if (!hass || !config || !config.device || !hass.entities) return roles;
 
@@ -215,7 +269,12 @@ function discoverEntities(hass, config) {
   const selects = inDomain("select");
   const numbers = inDomain("number");
 
-  roles.light = config.light_entity || idOf(lights[0]);
+  const { segments, mainLight } = collectSegments(hass, deviceEntities);
+  roles.segments = segments;
+  roles.mainLight = mainLight;
+
+  roles.light =
+    config.light_entity || (segments[0] && segments[0].light) || mainLight || idOf(lights[0]);
 
   roles.preset =
     config.preset_entity ||
@@ -270,6 +329,16 @@ const STYLES = `
 
   .section{ margin-top:12px; }
   .brightness ha-control-slider{ --control-slider-thickness:40px; display:block; }
+
+  .segments{ display:flex; flex-wrap:wrap; gap:8px; }
+  .seg-pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; max-width:100%;
+    border-radius:16px; border:1px solid var(--divider-color); background:transparent;
+    color:var(--primary-text-color); font-size:0.85rem; font-family:inherit; cursor:pointer; }
+  .seg-pill .seg-name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .seg-dot{ width:12px; height:12px; border-radius:50%; flex:0 0 auto;
+    border:1px solid var(--divider-color); background:transparent; }
+  .seg-pill.active{ border-color:var(--primary-color);
+    background:rgba(var(--rgb-primary-color,33,145,255),0.14); }
 
   .favorites{ display:flex; flex-wrap:wrap; gap:10px; }
   .fav{ width:30px; height:30px; border-radius:50%; cursor:pointer; padding:0;
@@ -348,6 +417,7 @@ class WledControlCard extends HTMLElement {
     this._optimistic = {};
     this._roles = { extras: [] };
     this._dropdownsExpanded = false;
+    this._segmentIndex = null;
     this._debouncers = {
       bri: debounce((v) => this._sendSlider("bri", v), 200),
       speed: debounce((v) => this._sendSlider("speed", v), 200),
@@ -365,6 +435,8 @@ class WledControlCard extends HTMLElement {
       type: config.type,
       device: config.device || "",
       name: config.name || "",
+      show_segments: config.show_segments ?? true,
+      show_master_segment: config.show_master_segment ?? true,
       show_brightness: config.show_brightness ?? true,
       show_favorites: config.show_favorites ?? true,
       show_favorite_presets: config.show_favorite_presets ?? true,
@@ -427,6 +499,8 @@ class WledControlCard extends HTMLElement {
     }
     return {
       device,
+      show_segments: true,
+      show_master_segment: true,
       show_brightness: true,
       show_favorites: true,
       show_favorite_presets: true,
@@ -448,11 +522,62 @@ class WledControlCard extends HTMLElement {
   _render() {
     if (!this._config || !this._hass) return;
     this._roles = discoverEntities(this._hass, this._config);
+    this._applySegmentSelection();
     if (!this._built) {
       this._build();
       this._built = true;
     }
     this._update();
+  }
+
+  // Richtet die Rollen auf das aktuell gewaehlte Segment aus. Ohne Segment-Modus
+  // (ein Segment, abgeschaltet oder festes light_entity) bleibt alles unveraendert.
+  _applySegmentSelection() {
+    const cfg = this._config;
+    const roles = this._roles;
+    const available = (roles.segments || []).filter((s) => {
+      const st = this._hass.states[s.light];
+      return st && st.state !== "unavailable";
+    });
+    roles.availableSegments = available;
+    roles.showMaster = cfg.show_master_segment !== false && !!roles.mainLight;
+    roles.segmentMode = cfg.show_segments !== false && !cfg.light_entity && available.length >= 2;
+    if (!roles.segmentMode) {
+      this._segmentIndex = null;
+      return;
+    }
+
+    // Auswahl pruefen: Presets koennen Segmente jederzeit umbauen.
+    const valid =
+      this._segmentIndex === MASTER_SEGMENT
+        ? roles.showMaster
+        : available.some((s) => s.index === this._segmentIndex);
+    if (!valid) this._segmentIndex = available[0].index;
+
+    if (this._segmentIndex === MASTER_SEGMENT) {
+      roles.light = roles.mainLight;
+      roles.palette = null;
+      roles.speed = null;
+      roles.intensity = null;
+    } else {
+      const seg = available.find((s) => s.index === this._segmentIndex);
+      roles.light = seg.light;
+      roles.palette = seg.palette;
+      roles.speed = seg.speed;
+      roles.intensity = seg.intensity;
+    }
+
+    // Manuelle Overrides behalten Vorrang.
+    if (cfg.palette_entity) roles.palette = cfg.palette_entity;
+    if (cfg.speed_entity) roles.speed = cfg.speed_entity;
+    if (cfg.intensity_entity) roles.intensity = cfg.intensity_entity;
+  }
+
+  _selectSegment(index) {
+    if (this._segmentIndex === index) return;
+    this._segmentIndex = index;
+    this._optimistic = {};
+    this._render();
   }
 
   get _lightState() {
@@ -485,6 +610,10 @@ class WledControlCard extends HTMLElement {
     content.appendChild(
       h("div", { class: "header" }, [badge, h("div", { class: "titles" }, [name, status]), power])
     );
+
+    /* --- Segment-Auswahl (nur bei mehreren aktiven Segmenten) --- */
+    this._el.segmentRow = h("div", { class: "section segments hidden" });
+    content.appendChild(this._el.segmentRow);
 
     /* --- Helligkeit --- */
     const briSlider = h("ha-control-slider");
@@ -622,6 +751,8 @@ class WledControlCard extends HTMLElement {
     const unavailable = light.state === "unavailable" || light.state === "unknown";
     const rgb = attrs.rgb_color;
     const colorCss = isOn && rgb ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]})` : "var(--primary-color)";
+    const canRgb = this._supportsRgb(attrs);
+    const canCct = this._supportsCct(attrs);
 
     /* Kopfzeile */
     this._el.name.textContent =
@@ -632,6 +763,9 @@ class WledControlCard extends HTMLElement {
     this._el.badgeIcon.style.color = isOn ? colorCss : "var(--state-icon-color, var(--secondary-text-color))";
     this._el.power.checked = isOn;
     this._el.power.disabled = unavailable;
+
+    /* Segment-Auswahl */
+    this._renderSegments();
 
     /* Helligkeit */
     const showBri = cfg.show_brightness && this._supportsBrightness(attrs);
@@ -649,17 +783,16 @@ class WledControlCard extends HTMLElement {
       this._el.briSection.classList.toggle("dimmed", !isOn);
     }
 
-    /* Favoriten */
-    this._el.favRow.classList.toggle("hidden", !cfg.show_favorites);
-    if (cfg.show_favorites) this._renderFavorites(cfg.favorite_colors);
+    /* Favoriten (nur wenn das Ziel ueberhaupt Farben kann) */
+    const showFavorites = cfg.show_favorites && canRgb;
+    this._el.favRow.classList.toggle("hidden", !showFavorites);
+    if (showFavorites) this._renderFavorites(cfg.favorite_colors);
     this._el.favRow.classList.toggle("dimmed", !isOn || unavailable);
 
     /* Favoriten-Voreinstellungen */
     this._renderFavoritePresets(cfg.show_favorite_presets ? cfg.favorite_presets : [], unavailable);
 
     /* Farbwaehler */
-    const canRgb = this._supportsRgb(attrs);
-    const canCct = this._supportsCct(attrs);
     const showPickers = cfg.show_color_pickers && (canRgb || canCct);
     this._el.pickers.classList.toggle("hidden", !showPickers);
     if (showPickers) {
@@ -705,7 +838,7 @@ class WledControlCard extends HTMLElement {
 
     /* Trennlinie 1 (vor Toggle/Effekt-Gruppe) */
     const showPresetFav = !this._el.presetFavRow.classList.contains("hidden");
-    const topContent = showBri || cfg.show_favorites || showPresetFav || showPickers;
+    const topContent = showBri || showFavorites || showPresetFav || showPickers;
     this._el.divider1.classList.toggle("hidden", !(topContent && hasEffectContent));
   }
 
@@ -742,6 +875,13 @@ class WledControlCard extends HTMLElement {
     const parts = [];
     const area = this._areaName();
     if (area) parts.push(area);
+    if (this._roles.segmentMode) {
+      if (this._segmentIndex === MASTER_SEGMENT) parts.push("Alle");
+      else {
+        const seg = this._roles.availableSegments.find((s) => s.index === this._segmentIndex);
+        if (seg) parts.push(this._segmentLabel(seg));
+      }
+    }
     if (light.state === "unavailable") parts.push("Nicht verfuegbar");
     else parts.push(isOn ? "Ein" : "Aus");
     if (isOn && attrs.brightness != null) parts.push(Math.round((attrs.brightness / 255) * 100) + " %");
@@ -779,6 +919,55 @@ class WledControlCard extends HTMLElement {
       });
       btn.style.backgroundColor = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
       row.appendChild(btn);
+    });
+  }
+
+  _segmentLabel(seg) {
+    const st = this._hass.states[seg.light];
+    let name = (st && st.attributes.friendly_name) || "";
+    const dev = this._deviceName();
+    if (dev && name.startsWith(dev)) name = name.slice(dev.length).replace(/^[\s\-–—·:]+/, "");
+    return name || `Segment ${seg.index}`;
+  }
+
+  _renderSegments() {
+    const row = this._el.segmentRow;
+    const roles = this._roles;
+    row.classList.toggle("hidden", !roles.segmentMode);
+    if (!roles.segmentMode) return;
+
+    const items = [];
+    if (roles.showMaster) items.push({ index: MASTER_SEGMENT, entity: roles.mainLight, label: "Alle" });
+    roles.availableSegments.forEach((s) =>
+      items.push({ index: s.index, entity: s.light, label: this._segmentLabel(s) })
+    );
+
+    const sig = JSON.stringify(items.map((i) => [i.index, i.label]));
+    if (row._sig !== sig) {
+      row._sig = sig;
+      row.innerHTML = "";
+      row._pills = {};
+      items.forEach((it) => {
+        const dot = h("span", { class: "seg-dot" });
+        const pill = h("button", { class: "seg-pill", "@click": () => this._selectSegment(it.index) }, [
+          dot,
+          h("span", { class: "seg-name", text: it.label }),
+        ]);
+        row.appendChild(pill);
+        row._pills[it.index] = { pill, dot, entity: it.entity };
+      });
+    }
+
+    Object.entries(row._pills || {}).forEach(([idx, p]) => {
+      const st = this._hass.states[p.entity];
+      const on = st && st.state === "on";
+      const rgb = st && st.attributes && st.attributes.rgb_color;
+      p.dot.style.backgroundColor = on
+        ? rgb
+          ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`
+          : "var(--primary-color)"
+        : "transparent";
+      p.pill.classList.toggle("active", Number(idx) === this._segmentIndex);
     });
   }
 
@@ -1270,6 +1459,8 @@ class WledControlCard extends HTMLElement {
 const LABELS = {
   device: "WLED-Geraet",
   name: "Anzeigename (optional)",
+  show_segments: "Segment-Auswahl (ab 2 Segmenten)",
+  show_master_segment: "Segment-Auswahl: \"Alle\" anzeigen",
   show_brightness: "Helligkeit",
   show_favorites: "Favoriten-Farben",
   show_favorite_presets: "Favoriten-Voreinstellungen",
@@ -1387,6 +1578,8 @@ class WledControlCardEditor extends HTMLElement {
       { name: "device", required: true, selector: { device: { integration: "wled", entity: { domain: "light" } } } },
       { name: "name", selector: { text: {} } },
       // Obere Anzeige-Schalter (einspaltig: Label links, Schalter rechts).
+      { name: "show_segments", selector: { boolean: {} } },
+      { name: "show_master_segment", selector: { boolean: {} } },
       { name: "show_brightness", selector: { boolean: {} } },
       { name: "dynamic_brightness_color", selector: { boolean: {} } },
       { name: "show_favorites", selector: { boolean: {} } },

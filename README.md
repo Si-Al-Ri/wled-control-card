@@ -92,6 +92,8 @@ Kein YAML nötig – aber möglich (siehe unten).
 |---|---|---|---|
 | `device` | string | – | **Pflicht.** Die Device-ID des WLED-Geräts. |
 | `name` | string | Gerätename | Optionaler Anzeigename in der Kopfzeile. |
+| `show_segments` | bool | `true` | Segment-Auswahl anzeigen, sobald das Gerät mindestens zwei aktive Segmente hat. |
+| `show_master_segment` | bool | `true` | Zusätzlicher Eintrag „Alle" in der Segment-Auswahl (steuert das Master-Light). |
 | `show_brightness` | bool | `true` | Helligkeitsregler anzeigen. |
 | `show_favorites` | bool | `true` | Favoriten-Farbfelder anzeigen. |
 | `show_color_pickers` | bool | `true` | RGB-/Weiß-Farbwähler-Buttons anzeigen. |
@@ -186,6 +188,25 @@ Service-Aufrufe (wie im nativen Licht-Dialog):
 - Weiß-Button → `color_temp_kelvin`
 
 Die Buttons erscheinen nur, wenn das Licht das jeweilige Farbschema unterstützt.
+
+---
+
+## Mehrere Segmente
+
+Legt WLED mehrere Segmente an, blendet die Karte automatisch eine **Segment-Auswahl**
+unter der Kopfzeile ein (ab zwei aktiven Segmenten). Jeder Eintrag zeigt als Punkt die
+aktuelle Farbe des Segments; ein Klick schaltet die Bedienelemente auf dieses Segment um.
+
+- **Pro Segment:** An/Aus, Helligkeit, Farbe, Effekt, Farbpalette, Geschwindigkeit, Intensität
+- **Geräteweit (unabhängig vom Segment):** Voreinstellung, Wiedergabeliste sowie die
+  Zusatz-Schalter/Buttons
+- **„Alle"** steuert das Master-Light des Geräts (An/Aus und Gesamthelligkeit).
+
+Da Voreinstellungen die Segmente jederzeit umbauen können, folgt die Auswahl den
+**aktuell verfügbaren** Segmenten: Verschwindet das gewählte Segment, springt die Karte
+automatisch auf das erste verfügbare. Bei nur einem Segment bleibt die Karte unverändert,
+die Auswahl erscheint dann gar nicht. Ein gesetztes `light_entity` fixiert die Karte
+weiterhin auf diese eine Entität.
 
 ---
 
