@@ -66,13 +66,31 @@ Dark-/Light-Unterstützung kommen dadurch „gratis".
 3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → „WLED Control Card"**
    → *Absenden*.
 
-> Die Karte wird über `add_extra_js_url` als Frontend-Modul geladen und funktioniert
-> dadurch **sowohl im Storage- als auch im YAML-Modus** von Lovelace – ein manueller
-> Ressourceneintrag ist nicht nötig.
+> **Wichtig:** Das Installieren allein genügt nicht. Erst durch das **Hinzufügen der
+> Integration** (Schritt 5 bzw. 3) meldet sich die Karte im Dashboard an. Wird dieser
+> Schritt übersprungen, taucht sie im Karten-Editor nicht auf.
 
-Nach der Einrichtung erscheint die Karte im Dashboard-Karteneditor unter
-**„WLED Control Card"** (mit Vorschau). Nach dem Neustart ggf. einmal den Browser
-hart neu laden (Strg/Cmd + Shift + R).
+Danach erscheint die Karte im Dashboard-Karteneditor unter **„WLED Control Card"**
+(mit Vorschau). Nach dem Neustart einmal den Browser neu laden.
+
+Die Karte trägt sich selbst als Dashboard-Ressource ein und funktioniert sowohl im
+Storage- als auch im YAML-Modus von Lovelace. Ein manueller Ressourceneintrag ist
+nicht nötig.
+
+### Die Karte erscheint nicht im Karten-Editor
+
+Der Reihe nach prüfen:
+
+1. **Integration hinzugefügt?** Unter **Einstellungen → Geräte & Dienste** muss
+   „WLED Control Card" als eingerichtete Integration stehen. Sie nur in HACS zu sehen,
+   reicht nicht.
+2. **Home Assistant neu gestartet?** Nach der Installation ist ein vollständiger
+   Neustart nötig, ein Neuladen der Konfiguration genügt nicht.
+3. **Browser neu geladen?** Am besten mit geleertem Cache (Strg/Cmd + Shift + R).
+4. **Ressource vorhanden?** Unter **Einstellungen → Dashboards → ⋮ → Ressourcen**
+   sollte `/wled_control_card/wled-control-card.js` stehen.
+5. **Konsole prüfen:** F12 öffnen, im Reiter *Console* sollte beim Laden
+   `WLED-CONTROL-CARD` mit der Version erscheinen.
 
 ---
 
